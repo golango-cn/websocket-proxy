@@ -1,4 +1,4 @@
-module websocket_proxy
+module github.com/golango-cn/websocket_proxy
 
 go 1.19
 
