@@ -1,4 +1,4 @@
-package websocket_proxy
+package wproxy
 
 import "github.com/gorilla/websocket"
 
