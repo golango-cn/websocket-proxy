@@ -7,62 +7,62 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// 定义 ProxyServerOption 函数类型
+// Define ProxyServerOption function type
 type ProxyServerOption func(s *ProxyServer)
 
-// 定义 ProxyServer 结构体
+// Define ProxyServer structure
 type ProxyServer struct {
-	conn          *websocket.Conn // 客户端连接
-	target        *websocket.Conn // 服务端连接
-	TargetUrl     string          // 代理目标地址
-	ClientHandler ClientHandler   // 客户端处理
-	ServerHandler ServerHandler   // 服务端处理
+	conn          *websocket.Conn // client connection
+	target        *websocket.Conn // server connection
+	TargetUrl     string          // proxy target address
+	ClientHandler ClientHandler   // client handler
+	ServerHandler ServerHandler   // server handler
 }
 
-// 解析器
+// Parser
 type parser interface {
 	Parse(interface{}) (interface{}, error)
 }
 
-// 过滤器
+// Filter
 type filter interface {
 	DoFilter(interface{}) (interface{}, error)
 }
 
-// 处理器
+// Handler
 type handler interface {
 	Handler(interface{}) (interface{}, error)
 }
 
-// 转换器
+// Converter
 type converter interface {
 	Convert(interface{}) (interface{}, error)
 }
 
-// Proxy 方法用于处理 WebSocket 代理请求
+// Proxy method is used to handle WebSocket proxy requests
 func (h *ProxyServer) Proxy(w http.ResponseWriter, r *http.Request, opts ...ProxyServerOption) error {
 
 	var upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			return true // 允许所有来源的 WebSocket 连接
+			return true // allow WebSocket connections from all sources
 		},
 	}
 
-	// 处理请求
+	// Handle request
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return err
 	}
 	h.conn = conn
 
-	// 调用ClientHandler的连接成功方法
+	// Call the Connected method of ClientHandler
 	h.ClientHandler.Connected(conn)
 
 	for _, opt := range opts {
 		opt(h)
 	}
 
-	// 连接到目标 WebSocket 服务器
+	// Connect to target WebSocket server
 	target, _, err := websocket.DefaultDialer.Dial(h.TargetUrl, nil)
 	if err != nil {
 		return err
@@ -73,55 +73,55 @@ func (h *ProxyServer) Proxy(w http.ResponseWriter, r *http.Request, opts ...Prox
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// 启动两个 goroutine，分别处理客户端和服务端的消息
-	go h.handleClientMessages(&wg) // 处理客户端消息
-	go h.handleServerMessages(&wg) // 处理服务端消息
+	// Start two goroutines to handle client and server messages respectively
+	go h.handleClientMessages(&wg) // handle client messages
+	go h.handleServerMessages(&wg) // handle server messages
 
 	wg.Wait()
 
 	return nil
 }
 
-// handleClientMessages 处理客户端消息
+// handleClientMessages handles client messages
 func (h *ProxyServer) handleClientMessages(wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
 	for {
-		// 读取客户端消息
+		// Read client message
 		_, data, err := h.conn.ReadMessage()
 		if err != nil {
-			// 连接错误处理
+			// Handle connection error
 			h.ClientHandler.ConnectionError(err)
 			return
 		}
-		// 调用客户端消息读取方法
+		// Call the ReadMessage method of the client
 		h.ClientHandler.ReadMessage(data)
 
-		// 解析器
+		// Parser
 		v, err := h.ClientHandler.Parse(data)
 		if err != nil {
-			// 处理解析错误
+			// Handle parsing errors
 			h.ClientHandler.HanderError(err)
 			continue
 		}
-		// 处理器
+		// Handler
 		v, err = h.ClientHandler.Handler(v)
 		if err != nil {
-			// 处理处理错误
+			// Handle processing errors
 			h.ClientHandler.HanderError(err)
 			continue
 		}
-		// 转换器
+		// Converter
 		v, err = h.ClientHandler.Convert(v)
 		if err != nil {
-			// 处理处理错误
+			// Handle processing errors
 			h.ClientHandler.HanderError(err)
 			continue
 		}
-		// 写入服务端
+		// Write to server
 		if err := h.target.WriteJSON(v); err != nil {
-			// 连接错误处理
+			// Handle connection error
 			h.ServerHandler.ConnectionError(err)
 			return
 		}
@@ -129,59 +129,60 @@ func (h *ProxyServer) handleClientMessages(wg *sync.WaitGroup) {
 
 }
 
-// handleServerMessages 处理服务端消息
+// handleServerMessages handles server messages
 func (h *ProxyServer) handleServerMessages(wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
 	for {
-		// 读取服务端消息
+		// Read server message
 		_, data, err := h.target.ReadMessage()
 		if err != nil {
-			// 连接错误处理
+			// Handle connection error
 			h.ServerHandler.ConnectionError(err)
 			return
 		}
-		// 调用服务端消息读取方法
+		// Call the ReadMessage method of the server
 		h.ServerHandler.ReadMessage(data)
 
-		// 解析器
+		// Parser
 		v, err := h.ServerHandler.Parse(data)
 		if err != nil {
-			// 处理解析错误
+			// Handle parsing errors
 			h.ServerHandler.HanderError(err)
 			continue
 		}
-		// 过滤器
+		// Filter
 		v, err = h.ServerHandler.DoFilter(v)
 		if err != nil {
-			// 处理过滤错误
+			// Handle filtering errors
 			h.ServerHandler.HanderError(err)
 			continue
 		}
 		if v == nil {
 			continue
 		}
-		// 处理器
+		// Handler
 		v, err = h.ServerHandler.Handler(v)
 		if err != nil {
-			// 处理处理错误
+			// Handle processing errors
 			h.ServerHandler.HanderError(err)
 			continue
 		}
-		// 转换器
+		// Converter
 		v, err = h.ServerHandler.Convert(v)
 		if err != nil {
-			// 处理转换错误
+			// Handle conversion errors
 			h.ServerHandler.HanderError(err)
 			continue
 		}
-		// 写入客户端
+		// Write to client
 		if err := h.conn.WriteJSON(v); err != nil {
-			// 连接错误处理
+			// Handle connection error
 			h.ClientHandler.ConnectionError(err)
 			return
 		}
+
 	}
 
 }
