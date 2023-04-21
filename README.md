@@ -26,3 +26,29 @@ Furthermore, the client-side and server-side filters, parsers, handlers, and con
 ![](./websocket.jpg)
 
 ![](./websocket_en.png)
+
+
+```golang
+
+// Initialize proxy server
+server := ProxyServer{
+    ClientHandler: &clientHandle{},       // Set client handler
+    ServerHandler: &serverHandle{},       // Set server handler
+    TargetUrl:     "ws://localhost:9090", // Set target URL
+}
+
+// Proxy websocket service
+http.HandleFunc("/ws/proxy", func(w http.ResponseWriter, r *http.Request) {
+    if err := server.Proxy(w, r, func(s *ProxyServer) {
+        // Dynamic configuration of target address
+        s.TargetUrl = s.TargetUrl + "/?id=123456"
+    }); err != nil {
+        log.Fatal(err.Error())
+    }
+})
+
+if err := http.ListenAndServe(":8080", nil); err != nil {
+    panic(err)
+}
+
+```
