@@ -180,8 +180,9 @@ func (h *ProxyServer) handleServerMessages(wg *sync.WaitGroup) {
 		// Write to client
 		if err := h.conn.WriteJSON(v); err != nil {
 			// Handle connection error
-			h.ClientHandler.ConnectionError(err)
-			return
+			if err0 := h.ClientHandler.ConnectionError(err); err0 != nil {
+				return
+			}
 		}
 
 	}
