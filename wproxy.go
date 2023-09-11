@@ -122,8 +122,9 @@ func (h *ProxyServer) handleClientMessages(wg *sync.WaitGroup) {
 		// Write to server
 		if err := h.target.WriteJSON(v); err != nil {
 			// Handle connection error
-			h.ServerHandler.ConnectionError(err)
-			return
+			if err0 := h.ServerHandler.ConnectionError(err); err0 != nil {
+				return
+			}
 		}
 	}
 

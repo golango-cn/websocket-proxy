@@ -106,9 +106,10 @@ func (c *serverHandle) HanderError(err error) {
 	// Log record, etc.
 }
 
-func (c *serverHandle) ConnectionError(err error) {
+func (c *serverHandle) ConnectionError(err error) error {
 	// Implementation of connection exception interface
 	// Log record, close connection, etc.
+	return nil
 }
 
 func (c *serverHandle) Connected(conn *websocket.Conn) {
