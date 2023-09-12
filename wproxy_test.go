@@ -42,9 +42,9 @@ func (c *clientHandle) Parse(v interface{}) (interface{}, error) {
 	return v, nil
 }
 
-func (c *clientHandle) Handler(v interface{}) (interface{}, error) {
+func (c *clientHandle) Handler(v interface{}) (interface{}, ClientMessageType, error) {
 	// Implementation of handler interface
-	return v, nil
+	return v, NormalMessage, nil
 }
 
 func (c *clientHandle) Convert(v interface{}) (interface{}, error) {

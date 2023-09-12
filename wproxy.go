@@ -88,6 +88,7 @@ func (h *ProxyServer) handleClientMessages(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
+
 		// Read client message
 		_, data, err := h.conn.ReadMessage()
 		if err != nil {
@@ -105,13 +106,24 @@ func (h *ProxyServer) handleClientMessages(wg *sync.WaitGroup) {
 			h.ClientHandler.HanderError(err)
 			continue
 		}
+
 		// Handler
-		v, err = h.ClientHandler.Handler(v)
+		v, messageType, err := h.ClientHandler.Handler(v)
 		if err != nil {
 			// Handle processing errors
 			h.ClientHandler.HanderError(err)
 			continue
 		}
+
+		// Handle client ping message
+		if messageType == PingMessage {
+			if err := h.conn.WriteJSON(v); err != nil {
+				h.ClientHandler.ConnectionError(err)
+				return
+			}
+			continue
+		}
+
 		// Converter
 		v, err = h.ClientHandler.Convert(v)
 		if err != nil {
