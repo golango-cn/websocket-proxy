@@ -64,9 +64,8 @@ func (h *ProxyServer) Proxy(w http.ResponseWriter, r *http.Request, cconn, sconn
 		if err != nil {
 			return err
 		}
-		h.conn = cconn
 	}
-
+	h.conn = cconn
 	// Call the Connected method of ClientHandler
 	h.ClientHandler.Connected(cconn)
 
@@ -80,8 +79,9 @@ func (h *ProxyServer) Proxy(w http.ResponseWriter, r *http.Request, cconn, sconn
 		if err != nil {
 			return err
 		}
-		h.target = sconn
 	}
+	h.target = sconn
+	// Call the Connected method of ServerHandler
 	h.ServerHandler.Connected(sconn)
 
 	var wg sync.WaitGroup
