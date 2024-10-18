@@ -39,8 +39,18 @@ type converter interface {
 	Convert(interface{}) (interface{}, error)
 }
 
+// connectIsValid method is used to check if the connection is valid
+func (h *ProxyServer) connectIsValid(conn *websocket.Conn) bool {
+	if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+		return false
+	}
+	return true
+}
+
 // Proxy method is used to handle WebSocket proxy requests
-func (h *ProxyServer) Proxy(w http.ResponseWriter, r *http.Request, opts ...ProxyServerOption) error {
+func (h *ProxyServer) Proxy(w http.ResponseWriter, r *http.Request, cconn, sconn *websocket.Conn, opts ...ProxyServerOption) error {
+
+	var err error
 
 	var upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
@@ -48,27 +58,31 @@ func (h *ProxyServer) Proxy(w http.ResponseWriter, r *http.Request, opts ...Prox
 		},
 	}
 
-	// Handle request
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return err
+	if cconn == nil || !h.connectIsValid(cconn) {
+		// Handle request
+		cconn, err = upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return err
+		}
+		h.conn = cconn
 	}
-	h.conn = conn
 
 	// Call the Connected method of ClientHandler
-	h.ClientHandler.Connected(conn)
+	h.ClientHandler.Connected(cconn)
 
 	for _, opt := range opts {
 		opt(h)
 	}
 
-	// Connect to target WebSocket server
-	target, _, err := websocket.DefaultDialer.Dial(h.TargetUrl, nil)
-	if err != nil {
-		return err
+	if sconn == nil || !h.connectIsValid(sconn) {
+		// Connect to target WebSocket server
+		sconn, _, err = websocket.DefaultDialer.Dial(h.TargetUrl, nil)
+		if err != nil {
+			return err
+		}
+		h.target = sconn
 	}
-	h.target = target
-	h.ServerHandler.Connected(target)
+	h.ServerHandler.Connected(sconn)
 
 	var wg sync.WaitGroup
 	wg.Add(2)

@@ -19,7 +19,7 @@ func TestProxy(t *testing.T) {
 
 	// Proxy websocket service
 	http.HandleFunc("/ws/proxy", func(w http.ResponseWriter, r *http.Request) {
-		if err := server.Proxy(w, r, func(s *ProxyServer) {
+		if err := server.Proxy(w, r, nil, nil, func(s *ProxyServer) {
 			// Dynamic configuration of target address
 			s.TargetUrl = s.TargetUrl + "/?id=123456"
 		}); err != nil {
